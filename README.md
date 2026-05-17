@@ -17,4 +17,10 @@ README.md             本頁，列出所有公開筆記
 
 ## 授權
 
-筆記內容由 Adam Chan 創作；除非另有註明，採用 CC BY 4.0 授權。
+本 repo 內容（文字、slide、圖示等筆記材料）採用 [Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/) 授權。
+
+歡迎個人讀者轉載、翻譯、節錄、引用，必須標明出處（作者 Adam Chan + 連結返本 repo）。**禁止任何形式嘅商業用途**，包括但不限於將內容納入商業 AI 模型訓練資料集、商業內容平台轉售、付費課程材料。
+
+商業合作或非標準授權需求，請另行聯絡。
+
+詳見 [LICENSE](./LICENSE)。
