@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>Adam Shadow — 點樣為自己建立一個 AI 數字分身</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Modern Minimalist — Charcoal / Slate Gray / Light Gray / White */
+  --bg: #ffffff;
+  --bg-elevated: #f7f8f9;
+  --text-primary: #36454f;
+  --text-secondary: #708090;
+  --accent: #36454f;
+  --accent-warm: #708090;
+  --accent-cool: #708090;
+  --border: #d3d3d3;
+  --mirror: linear-gradient(135deg, #36454f 0%, #708090 50%, #36454f 100%);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  font-family: 'Inter', 'DejaVu Sans', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+.deck { width: 100vw; height: 100vh; position: relative; }
+.slide {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  padding: 5vh 7vw 10vh;
+  opacity: 0; visibility: hidden;
+  transition: opacity .4s ease;
+}
+.slide.active { opacity: 1; visibility: visible; }
+
+.slide-num {
+  position: absolute; top: 3vh; right: 5vw;
+  color: var(--text-secondary); font-size: 13px;
+  letter-spacing: 3px;
+}
+.slide-title {
+  font-size: clamp(26px, 3.2vw, 46px);
+  font-weight: 600;
+  background: var(--mirror);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 1.2vh;
+  line-height: 1.2;
+}
+.slide-subtitle {
+  font-size: clamp(13px, 1.3vw, 19px);
+  color: var(--text-secondary);
+  margin-bottom: 3.4vh;
+  line-height: 1.5;
+}
+
+.cover { justify-content: center; align-items: center; text-align: center; }
+.cover-icon { font-size: clamp(48px, 5vw, 84px); margin-bottom: 2vh; }
+.cover-title {
+  font-size: clamp(36px, 5vw, 76px);
+  font-weight: 700;
+  background: var(--mirror);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 2px;
+  margin-bottom: 1.6vh;
+}
+.cover-sub {
+  font-size: clamp(15px, 1.5vw, 22px);
+  color: var(--text-secondary);
+  max-width: 70%;
+  line-height: 1.7;
+}
+.cover-tag {
+  margin-top: 4vh;
+  padding: 8px 24px;
+  border: 1px solid var(--border);
+  border-radius: 30px;
+  color: var(--accent-warm);
+  font-size: 13px;
+  letter-spacing: 1.5px;
+}
+
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2.2vw; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.8vw; }
+
+.card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2.6vh 1.8vw;
+}
+.card-icon { font-size: 30px; margin-bottom: 1.4vh; }
+.card-title {
+  font-size: clamp(14px, 1.25vw, 19px);
+  font-weight: 600;
+  margin-bottom: 1vh;
+  color: var(--text-primary);
+}
+.card-body {
+  font-size: clamp(12px, 0.95vw, 15px);
+  color: var(--text-secondary);
+  line-height: 1.75;
+}
+
+.pipeline { display: flex; flex-direction: column; gap: 0.6vh; margin-top: 1vh; }
+.pipe-row {
+  display: flex; align-items: center; gap: 1.4vw;
+  padding: 2vh 1.8vw;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.pipe-label {
+  font-weight: 700; color: var(--accent-cool);
+  font-size: clamp(13px, 1.1vw, 17px);
+  min-width: 9vw;
+  letter-spacing: 1px;
+}
+.pipe-name {
+  font-weight: 600; color: var(--text-primary);
+  font-size: clamp(13px, 1.05vw, 17px);
+  min-width: 10vw;
+}
+.pipe-desc {
+  flex: 1; color: var(--text-secondary);
+  font-size: clamp(12px, 0.92vw, 15px);
+  line-height: 1.5;
+}
+.pipe-arrow {
+  text-align: center; color: var(--accent-warm);
+  font-size: 20px; margin: -0.4vh 0; opacity: .8;
+}
+
+.db-row {
+  display: flex; align-items: center; gap: 1.4vw;
+  padding: 1.4vh 1.8vw;
+  background: var(--bg-elevated);
+  border-left: 3px solid var(--accent-warm);
+  border-radius: 6px;
+  margin-bottom: 1.1vh;
+}
+.db-num {
+  font-size: 22px; font-weight: 700;
+  color: var(--accent-warm); min-width: 28px;
+}
+.db-info { flex: 1; }
+.db-name {
+  font-weight: 600; color: var(--text-primary);
+  font-size: clamp(13px, 1.1vw, 18px);
+  margin-bottom: 3px;
+}
+.db-desc {
+  color: var(--text-secondary);
+  font-size: clamp(11px, 0.88vw, 14px);
+  line-height: 1.5;
+}
+.db-stat {
+  color: var(--accent-cool);
+  font-size: clamp(12px, 0.95vw, 15px);
+  font-weight: 600;
+  min-width: 7vw;
+  text-align: right;
+  letter-spacing: 0.5px;
+}
+
+.rule-card {
+  background: linear-gradient(135deg, rgba(54,69,79,.08), rgba(112,128,144,.08));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2.8vh 1.6vw;
+}
+.rule-num {
+  display: inline-block;
+  background: var(--accent-warm); color: var(--bg);
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  text-align: center; line-height: 34px;
+  font-weight: 700; font-size: 16px;
+  margin-bottom: 1.4vh;
+}
+.rule-title {
+  font-size: clamp(14px, 1.2vw, 19px);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1.2vh;
+  line-height: 1.4;
+}
+.rule-body {
+  font-size: clamp(12px, 0.93vw, 15px);
+  color: var(--text-secondary);
+  line-height: 1.75;
+}
+
+.step-list { display: flex; flex-direction: column; gap: 1.2vh; }
+.step-row {
+  display: flex; gap: 1.4vw;
+  padding: 1.8vh 1.8vw;
+  background: var(--bg-elevated);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+.step-num {
+  font-size: clamp(26px, 2.4vw, 38px);
+  font-weight: 700;
+  background: var(--mirror);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  min-width: 56px;
+  line-height: 1;
+}
+.step-content { flex: 1; }
+.step-title {
+  font-weight: 600;
+  font-size: clamp(13px, 1.15vw, 18px);
+  color: var(--text-primary);
+  margin-bottom: 5px;
+}
+.step-desc {
+  color: var(--text-secondary);
+  font-size: clamp(11px, 0.88vw, 14px);
+  line-height: 1.6;
+}
+
+.warning-card {
+  background: rgba(224, 70, 70, .06);
+  border: 1px solid rgba(224, 70, 70, .3);
+  border-radius: 12px;
+  padding: 2.4vh 1.8vw;
+}
+.warning-title {
+  color: #e07a7a; font-weight: 600;
+  font-size: clamp(14px, 1.15vw, 18px);
+  margin-bottom: 1vh;
+}
+.warning-body {
+  color: var(--text-secondary);
+  font-size: clamp(12px, 0.95vw, 15px);
+  line-height: 1.85;
+}
+
+.good-card {
+  background: rgba(106, 168, 224, .06);
+  border: 1px solid rgba(106, 168, 224, .3);
+  border-radius: 12px;
+  padding: 2.4vh 1.8vw;
+}
+.good-title {
+  color: var(--accent-cool); font-weight: 600;
+  font-size: clamp(14px, 1.15vw, 18px);
+  margin-bottom: 1vh;
+}
+.good-body {
+  color: var(--text-secondary);
+  font-size: clamp(12px, 0.95vw, 15px);
+  line-height: 1.85;
+}
+
+.nav {
+  position: absolute; bottom: 2.6vh; left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: 14px; align-items: center;
+  z-index: 100;
+}
+.nav-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all .2s;
+}
+.nav-btn:hover { background: var(--accent-cool); color: var(--bg); border-color: var(--accent-cool); }
+.dots { display: flex; gap: 7px; }
+.dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--border);
+  cursor: pointer;
+  transition: all .2s;
+}
+.dot.active { background: var(--accent-warm); width: 22px; border-radius: 4px; }
+
+.quote {
+  font-style: italic;
+  font-size: clamp(15px, 1.4vw, 22px);
+  color: var(--accent-warm);
+  border-left: 3px solid var(--accent-warm);
+  padding-left: 1.6vw;
+  margin: 2.4vh 0 0;
+  line-height: 1.65;
+}
+.kbd-hint {
+  position: absolute; bottom: 1.4vh; right: 1.8vw;
+  color: var(--text-secondary);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+/* Print mode: show every slide one-per-page, fall back gradient title to solid */
+@media print {
+  @page { size: 1280px 720px; margin: 0; }
+  html, body { width: 1280px; height: auto; overflow: visible; }
+  .deck { width: 1280px; height: auto; position: static; }
+  .slide {
+    position: relative !important;
+    inset: auto !important;
+    width: 1280px !important;
+    height: 720px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transition: none !important;
+    page-break-after: always;
+    break-after: page;
+  }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+  .nav, .kbd-hint { display: none !important; }
+  /* Solid colour fallback for gradient-clipped text (so it remains visible in print) */
+  .slide-title, .cover-title, .step-num,
+  section.slide h2[style*="-webkit-text-fill-color"] {
+    background: none !important;
+    -webkit-text-fill-color: #36454f !important;
+    color: #36454f !important;
+  }
+}
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+<!-- 1: cover -->
+<section class="slide cover active">
+  <div class="cover-icon">🪞</div>
+  <h1 class="cover-title">Adam Shadow</h1>
+  <p class="cover-sub">如何為自己建立一個 AI 數字分身<br><span style="opacity:.7">一個由真實言論長期累積、有證據可以追溯嘅延伸智慧體</span></p>
+  <div class="cover-tag">概念 · 方法 · 流程</div>
+</section>
+
+<!-- 2: shadow vs roleplay -->
+<section class="slide">
+  <span class="slide-num"></span>
+  <h2 class="slide-title">不是角色扮演，是有證據嘅延伸體</h2>
+  <p class="slide-subtitle">Adam-Shadow 並不是模仿一個人，而是由自己多年真實言論長期累積出來嘅延伸智慧體</p>
+  <div class="grid-2" style="margin-top:1.4vh">
+    <div class="warning-card">
+      <div class="warning-title">❌ 模板式角色扮演</div>
+      <div class="warning-body">
+        憑印象生成「似某人」嘅內容。<br><br>
+        ・無證據基礎可以追溯<br>
+        ・出現矛盾，亦無從查證<br>
+        ・寫得越久越漂亮，卻越來越離開本人<br>
+        ・最後留低嘅，只係一個模板
+      </div>
+    </div>
+    <div class="good-card">
+      <div class="good-title">✅ 證據式 Shadow</div>
+      <div class="good-body">
+        每個語氣、決策、判斷，都連返原始言論嘅證據。<br><br>
+        ・每條人格特質都要有足夠原文證據<br>
+        ・矛盾嘅地方明文標記，不蒙混<br>
+        ・樣本累積之後，版本逐步改良<br>
+        ・本人隨時可以審視，亦可以否決
+      </div>
+    </div>
+  </div>
+  <p class="quote">引用《小王子》一句：「真正重要嘅東西，眼睛係看不見嘅。」</p>
+</section>
+
+<!-- 3: 系統全圖 SVG (post-shadow-vs-roleplay, top-down learning) -->
+<section class="slide">
+  <span class="slide-num"></span>
+  <h2 class="slide-title">整體全圖：由原始存檔到 Shadow 輸出</h2>
+  <p class="slide-subtitle">Shadow 由原始存檔出發，經過分層管線收斂，最終匯成輸出 — 以下係整套系統嘅完整流程</p>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;margin-top:1vh">
+    <svg viewBox="0 0 1100 480" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-height:74vh;font-family:'Inter','Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#708090"/>
+        </marker>
+      </defs>
+
+      <!-- 三條主軸 -->
+      <g>
+        <rect x="20" y="12" width="340" height="58" rx="8" fill="#f7f8f9" stroke="#36454f" stroke-width="1.5"/>
+        <text x="36" y="40" font-size="18" fill="#36454f" font-weight="600">📜 Bio · 自傳基線</text>
+        <text x="36" y="61" font-size="13" fill="#708090">本人審閱過嘅真實基線</text>
+
+        <rect x="380" y="12" width="340" height="58" rx="8" fill="#f7f8f9" stroke="#36454f" stroke-width="1.5"/>
+        <text x="396" y="40" font-size="18" fill="#36454f" font-weight="600">📚 言論歷史</text>
+        <text x="396" y="61" font-size="13" fill="#708090">Facebook 歷年累積嘅原文</text>
+
+        <rect x="740" y="12" width="340" height="58" rx="8" fill="#f7f8f9" stroke="#36454f" stroke-width="1.5"/>
+        <text x="756" y="40" font-size="18" fill="#36454f" font-weight="600">👁️ 日常互動觀察</text>
+        <text x="756" y="61" font-size="13" fill="#708090">語氣修正紀錄逐次累積</text>
+      </g>
+
+      <!-- Arrow to Layer 0 -->
+      <line x1="550" y1="72" x2="550" y2="90" stroke="#708090" stroke-width="1.5" marker-end="url(#ah)"/>
+
+      <!-- Layer 0 -->
+      <g>
+        <rect x="20" y="94" width="1060" height="58" rx="8" fill="#fafafa" stroke="#36454f" stroke-width="1"/>
+        <text x="36" y="119" font-size="16" font-weight="700" fill="#36454f">第一層 · 原始存檔（只可讀；私人來源只留本機，不上傳）</text>
+        <text x="36" y="142" font-size="14" fill="#708090">📜 Bio　📚 Facebook　💬 WhatsApp　📧 Email　📄 公司文件　🖼️ 視覺　📰 媒體　🌐 歷年版本 — 多類原始來源</text>
+      </g>
+
+      <line x1="550" y1="154" x2="550" y2="176" stroke="#708090" stroke-width="1.5" marker-end="url(#ah)"/>
+      <text x="560" y="169" font-size="12" fill="#708090" font-style="italic">經過私隱分層，第三方資料先遮蔽</text>
+
+      <!-- Layer 1 -->
+      <g>
+        <rect x="20" y="178" width="1060" height="56" rx="8" fill="#fafafa" stroke="#36454f" stroke-width="1"/>
+        <text x="36" y="203" font-size="16" font-weight="700" fill="#36454f">第二層 · 文字檔結構化（原文逐字保留，不作摘要）</text>
+        <text x="36" y="225" font-size="14" fill="#708090">Facebook 分月 · WhatsApp 分群組 · Email 分批次 · 文件抽附加資料 · 加敏感度標記</text>
+      </g>
+
+      <line x1="550" y1="236" x2="550" y2="258" stroke="#708090" stroke-width="1.5" marker-end="url(#ah)"/>
+      <text x="560" y="251" font-size="12" fill="#708090" font-style="italic">寫入時防重複；每條人格特質必有足夠原文證據</text>
+
+      <!-- Layer 2: container + 5 DB sub-boxes -->
+      <g>
+        <rect x="20" y="260" width="1060" height="96" rx="8" fill="#f7f8f9" stroke="#36454f" stroke-width="1.5"/>
+        <text x="36" y="285" font-size="16" font-weight="700" fill="#36454f">第三層 · 結構化知識庫</text>
+
+        <g transform="translate(36, 296)">
+          <rect x="0" y="0" width="195" height="56" rx="5" fill="#ffffff" stroke="#708090" stroke-width="1"/>
+          <text x="12" y="20" font-size="14" font-weight="600" fill="#36454f">言論索引</text>
+          <text x="12" y="37" font-size="12" fill="#708090">逐條原文嘅入口</text>
+          <text x="12" y="52" font-size="12" fill="#708090">即時定位</text>
+
+          <rect x="205" y="0" width="195" height="56" rx="5" fill="#ffffff" stroke="#708090" stroke-width="1"/>
+          <text x="217" y="20" font-size="14" font-weight="600" fill="#36454f">生平時序</text>
+          <text x="217" y="37" font-size="12" fill="#708090">重大事件按時序排列</text>
+          <text x="217" y="52" font-size="12" fill="#708090">對照核實</text>
+
+          <rect x="410" y="0" width="195" height="56" rx="5" fill="#ffffff" stroke="#708090" stroke-width="1"/>
+          <text x="422" y="20" font-size="14" font-weight="600" fill="#36454f">人格特質</text>
+          <text x="422" y="37" font-size="12" fill="#708090">人格嘅幾個維度</text>
+          <text x="422" y="52" font-size="12" fill="#708090">合成參照</text>
+
+          <rect x="615" y="0" width="195" height="56" rx="5" fill="#ffffff" stroke="#708090" stroke-width="1"/>
+          <text x="627" y="20" font-size="14" font-weight="600" fill="#36454f">語氣樣本庫</text>
+          <text x="627" y="37" font-size="12" fill="#708090">按場合分類嘅樣本</text>
+          <text x="627" y="52" font-size="12" fill="#708090">語氣校準</text>
+
+          <rect x="820" y="0" width="195" height="56" rx="5" fill="#ffffff" stroke="#708090" stroke-width="1"/>
+          <text x="832" y="20" font-size="14" font-weight="600" fill="#36454f">決策手冊</text>
+          <text x="832" y="37" font-size="12" fill="#708090">真實決策嘅規律</text>
+          <text x="832" y="52" font-size="12" fill="#708090">判斷映射</text>
+        </g>
+      </g>
+
+      <line x1="550" y1="358" x2="550" y2="380" stroke="#708090" stroke-width="1.5" marker-end="url(#ah)"/>
+      <text x="560" y="373" font-size="12" fill="#708090" font-style="italic">按場合揀對應嘅樣本；違規即時重做，反覆不過關由本人接手</text>
+
+      <!-- Layer 3 (dark emphasis) -->
+      <g>
+        <rect x="20" y="382" width="1060" height="62" rx="8" fill="#36454f"/>
+        <text x="36" y="406" font-size="16" font-weight="700" fill="#ffffff">第四層 · Shadow 輸出</text>
+        <text x="36" y="426" font-size="14" fill="#d3d3d3">語氣合成（按場合揀樣本）· 決策模擬（規律配本質思考）· 代寫稿件</text>
+        <text x="36" y="440" font-size="13" fill="#a8b0b8">流程係：先寫初稿，再自我校準，如有違規即時重做；反覆校準仍不過關，由本人接手處理</text>
+      </g>
+
+      <!-- 底部：硬規則 + 雙軌交付 -->
+      <g transform="translate(0, 448)">
+        <rect x="20" y="0" width="520" height="30" rx="6" fill="#f7f8f9" stroke="#708090" stroke-width="1"/>
+        <text x="34" y="14" font-size="14" font-weight="700" fill="#36454f">核心硬規則</text>
+        <text x="34" y="27" font-size="12" fill="#708090">證據要足夠 · 逐版小幅修補 · 分身不擴權</text>
+
+        <rect x="560" y="0" width="520" height="30" rx="6" fill="#f7f8f9" stroke="#708090" stroke-width="1"/>
+        <text x="574" y="14" font-size="14" font-weight="700" fill="#36454f">雙軌交付</text>
+        <text x="574" y="27" font-size="12" fill="#708090">🔒 私人版 · 保存真相　　🌐 公開版 · 保存意義</text>
+      </g>
+    </svg>
+  </div>
+</section>
+
+<!-- 4: three pillars -->
+<section class="slide">
+  <span class="slide-num"></span>
+  <h2 class="slide-title">核心主軸：Shadow 由甚麼構成</h2>
+  <p class="slide-subtitle">核心主軸缺一條，整套系統就會變空殼；幾條齊備之後，數字延伸先有可信度</p>
+  <div class="grid-3" style="margin-top:1.6vh">
+    <div class="card">
+      <div class="card-icon">📜</div>
+      <div class="card-title">Bio · 自傳基線</div>
+      <div class="card-body">本人親自審閱過嘅生平、項目、合作方、年份、引言。<br><br>呢份 Bio 就係整套系統嘅真實基線；未得本人明確授權之前，不可改寫。Adam Shadow 以現行 Bio 作起點，同時保留歷史版本作對照。</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📚</div>
+      <div class="card-title">言論歷史</div>
+      <div class="card-body">來自真實平台嘅多年原文。Adam Shadow 以歷年 Facebook 為主。<br><br>所有原文逐字保留，不作摘要；按年月時序累積；私訊一律不讀，以保第三方私隱。</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">👁️</div>
+      <div class="card-title">日常互動觀察</div>
+      <div class="card-body">AI 助手與本人嘅日常往來。文字存檔以外嘅判斷、偏好、修正信號，原來都係呢一層補返。<br><br>每一次語氣修正都會寫入紀錄，並累積入語氣樣本庫，作為下次合成嘅依據。</div>
+    </div>
+  </div>
+</section>
+
+<!-- 5: 多源證據生態 -->
+<section class="slide">
+  <span class="slide-num"></span>
+  <h2 class="slide-title">證據生態：並不只是 Facebook</h2>
+  <p class="slide-subtitle">「真實言論」其實遠遠不止公開貼文；多類來源各自補不同視角，少一類都會失真</p>
+  <div class="grid-3" style="margin-top:1.4vh;gap:1.2vw">
+    <div class="card" style="padding:1.6vh 1.3vw">
+      <div class="card-icon" style="font-size:24px">📜</div>
+      <div class="card-title">Bio 履歷</div>
+      <div class="card-body">本人審閱過嘅生平、項目、年份 — 整套系統嘅真實基線</div>
+    </div>
+    <div class="card" style="padding:1.6vh 1.3vw">
+      <div class="card-icon" style="font-size:24px">📚</div>
+      <div class="card-title">公開平台存檔</div>
+      <div class="card-body">Facebook、Blog、LinkedIn 多年嘅逐字原文 — 屬於公開語氣</div>
+    </div>
+    <div class="card" style="padding:1.6vh 1.3vw">
+      <div class="card-icon" style="font-size:24px">💬</div>
+      <div class="card-title">私人通訊存檔</div>
+      <div class="card-body">WhatsApp、iMessage 群組嘅原始對話 — 屬於私下語氣同對話節奏</div>
+    </div>
+    <div class="card" style="padding:1.6vh 1.3vw">
+      <div class="card-icon" style="font-size:24px">📧</div>
+      <div class="card-title">Email 存檔</div>
+      <div class="card-body">公司階段嘅 Gmail、Outlook 紀錄 — 屬於正式語氣同商務情境</div>
+    </div>
+    <div class="card" style="padding:1.6vh 1.3vw">
+      <div class="card-icon" style="font-size:24px">📄</div>
+      <div class="card-title">公司／項目文件</div>
+      <div class="card-body">治理文件、預算、團隊報告、履歷 — 治理層面嘅事實</div>
+    </div>
+    <div class="card" style="padding:1.6vh 1.3vw">
+      <div class="card-icon" style="font-size:24px">🖼️</div>
+      <div class="card-title">視覺存檔</div>
+      <div class="card-body">活動相、海報、活動圖、品牌元素 — 補返氣氛同感覺</div>
+    </div>
+    <div class="card" style="padding:1.6vh 1.3vw">
+      <div class="card-icon" style="font-size:24px">📰</div>
+      <div class="card-title">公開媒體報導</div>
+      <div class="card-body">訪問、專欄、媒體報導 — 屬於第三方視角</div>
+    </div>
+    <div class="card" style="padding:1.6vh 1.3vw">
+      <div class="card-icon" style="font-size:24px">🌐</div>
+      <div class="card-title">平台歷年版本</div>
+      <div class="card-body">公司網站、blog 嘅歷史紀錄 — 反映品牌敘事嘅演化</div>
+    </div>
+    <div class="card" style="padding:1.6vh 1.3vw;background:linear-gradient(135deg,rgba(54,69,79,.12),transparent);border-color:var(--accent-warm)">
+      <div class="card-icon" style="font-size:24px">🪞</div>
+      <div class="card-title">融合：Shadow 系統</div>
+      <div class="card-body">多源交叉比對，證據鏈互補。每條人格特質必跨多源核實之後，先可以提升可信度。</div>
+    </div>
+  </div>
+</section>
+
+<!-- 6: 私隱分層紀律 -->
+<section class="slide">
+  <span class="slide-num"></span>
+  <h2 class="slide-title">私隱分層紀律：唔分層，Shadow 就會變成洩密源頭</h2>
+  <p class="slide-subtitle">每件素材入庫之前，必先問一句：「呢一件，應該去邊一層？」</p>
+  <div class="grid-3" style="margin-top:1.6vh">
+    <div class="card" style="border-left:3px solid #6ad28c;background:rgba(106,210,140,.05)">
+      <div class="card-icon">🟢</div>
+      <div class="card-title">第一層 · 可直接公開</div>
+      <div class="card-body">已公開嘅個人成就、媒體報導、自己嘅公開帖文、自己嘅感受同學習，以及不涉及他人責任嘅經驗。<br><br><span style="color:var(--accent-cool)">處理方式：可以保留；不過語氣要克制。</span></div>
+    </div>
+    <div class="card" style="border-left:3px solid var(--accent-warm);background:rgba(54,69,79,.05)">
+      <div class="card-icon">🟡</div>
+      <div class="card-title">第二層 · 可轉化後公開</div>
+      <div class="card-body">內部壓力、團隊磨合、治理張力、與持份者嘅分歧，以及退場前嘅複雜感受。<br><br><span style="color:var(--accent-warm)">處理方式：改寫成主題、心理、學習層面；不保留人名、原話、數字、具體日期。</span></div>
+    </div>
+    <div class="card" style="border-left:3px solid #e07a7a;background:rgba(224,122,122,.05)">
+      <div class="card-icon">🔴</div>
+      <div class="card-title">第三層 · 永不公開</div>
+      <div class="card-body">私人 WhatsApp 原文、未公開股東資料、未公開財務、對個人動機嘅判斷，以及涉及法律或商業風險嘅內容。<br><br><span style="color:#e07a7a">處理方式：永遠留喺私人版；不進公開版。</span></div>
+    </div>
+  </div>
+  <p class="quote" style="font-size:clamp(13px,1.1vw,17px);font-style:normal;margin-top:1.6vh">硬規：Email、WhatsApp、公司治理文件永遠只留本機，不上傳公開儲存庫；第三方姓名、email、電話、金額一律遮蔽之後，先可以進入下一層。</p>
+</section>
+
+<!-- 7: 分層資料管線 -->
+<section class="slide">
+  <span class="slide-num"></span>
+  <h2 class="slide-title">分層資料管線：由原始存檔到 Shadow 輸出</h2>
+  <p class="slide-subtitle">分層拆解，每層職責清晰；不可混為一談，事後可追溯先有保證</p>
+  <div class="pipeline">
+    <div class="pipe-row">
+      <div class="pipe-label">第一層</div>
+      <div class="pipe-name">原始存檔</div>
+      <div class="pipe-desc">多類原始匯出（Facebook 存檔、WhatsApp、Email、公司文件、視覺、媒體、平台歷年版本、Bio）。屬於只可讀層；私人來源永遠只留本機，不上傳公開儲存庫。</div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+    <div class="pipe-row">
+      <div class="pipe-label">第二層</div>
+      <div class="pipe-name">文字檔結構化</div>
+      <div class="pipe-desc">按來源類型分開存放：Facebook 分月、WhatsApp 分群組、Email 分批次、文件抽附加資料。原文逐字保留，加敏感度標記；不作摘要。</div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+    <div class="pipe-row">
+      <div class="pipe-label">第三層</div>
+      <div class="pipe-name">結構化知識庫</div>
+      <div class="pipe-desc">可查、可排序。每條人格特質、生平事件都強制連返足夠原文；證據鏈不可斷。</div>
+    </div>
+    <div class="pipe-arrow">↓</div>
+    <div class="pipe-row">
+      <div class="pipe-label">第四層</div>
+      <div class="pipe-name">Shadow 輸出</div>
+      <div class="pipe-desc">語氣合成、決策模擬、代寫稿件。流程係：先寫初稿，再自我校準，如有違規即時重做；反覆校準仍不過關，由本人接手處理。</div>
+    </div>
+  </div>
+</section>
+
+<!-- 8: 結構化知識庫 -->
+<section class="slide">
+  <span class="slide-num"></span>
+  <h2 class="slide-title">結構化知識庫</h2>
+  <p class="slide-subtitle">Shadow 嘅證據根本；其餘 AI 角色對此一律只可讀、不可寫</p>
+  <div class="db-row">
+    <div class="db-num">A</div>
+    <div class="db-info">
+      <div class="db-name">言論索引</div>
+      <div class="db-desc">逐條原文嘅索引：時間戳、原文位置、核實狀態、人格訊號標記。</div>
+    </div>
+    <div class="db-stat">即時定位</div>
+  </div>
+  <div class="db-row">
+    <div class="db-num">B</div>
+    <div class="db-info">
+      <div class="db-name">生平時序</div>
+      <div class="db-desc">年月事件加 Bio 對照狀態：吻合 / 只有 Bio / 只有 Facebook / 互相衝突。</div>
+    </div>
+    <div class="db-stat">對照核實</div>
+  </div>
+  <div class="db-row">
+    <div class="db-num">C</div>
+    <div class="db-info">
+      <div class="db-name">人格特質</div>
+      <div class="db-desc">人格嘅幾個維度 — 語氣、思維、興趣、價值觀、決策；附可信度同演化版本。</div>
+    </div>
+    <div class="db-stat">合成參照</div>
+  </div>
+  <div class="db-row">
+    <div class="db-num">D</div>
+    <div class="db-info">
+      <div class="db-name">語氣樣本庫</div>
+      <div class="db-desc">真實語氣樣本，按場合分多個分類 — 反思、自嘲、教學、商業、中英混用等；可疊加。</div>
+    </div>
+    <div class="db-stat">語氣校準</div>
+  </div>
+  <div class="db-row">
+    <div class="db-num">E</div>
+    <div class="db-info">
+      <div class="db-name">決策手冊</div>
+      <div class="db-desc">由真實嘅合作、產品、風險決策提煉出來嘅規律；新情境一接入，即映返歷史證據。</div>
+    </div>
+    <div class="db-stat">判斷映射</div>
+  </div>
+</section>
+
+<!-- 9: 私人版 ↔ 公開版 dual-track -->
+<section class="slide">
+  <span class="slide-num"></span>
+  <h2 class="slide-title">私人版 ↔ 公開版：兩條軌道並行</h2>
+  <p class="slide-subtitle">私人版保存嘅係真相；公開版保存嘅係意義 — Shadow 系統同創業回憶錄項目，就係兩條軌道並行嘅關係</p>
+  <div class="grid-2" style="margin-top:1.6vh">
+    <div class="card" style="border-left:3px solid #e07a7a;background:linear-gradient(135deg,rgba(224,122,122,.06),transparent)">
+      <div class="card-icon">🔒</div>
+      <div class="card-title">私人版（為自己）</div>
+      <div class="card-body">完整時間線、原始對話、具體人物、日期、數字、治理脈絡。<br><br>· 章節文稿、WhatsApp 逐字引用<br>· Email 原文、公司治理文件數據<br>· 只留本機，不上傳<br><br><span style="color:#e07a7a">對象：自己同少數可信任嘅人</span><br><span style="color:#e07a7a;font-weight:600">一句話：保存真相。</span></div>
+    </div>
+    <div class="card" style="border-left:3px solid var(--accent-cool);background:linear-gradient(135deg,rgba(112,128,144,.06),transparent)">
+      <div class="card-icon">🌐</div>
+      <div class="card-title">公開版（為讀者）</div>
+      <div class="card-body">已公開嘅個人成就、媒體報導、公開帖文、自己嘅感受同反思。<br><br>· 改寫成主題、心理、學習層面<br>· 不保留可辨識身份嘅資料<br>· 經敏感字眼搜查確認零命中，先可以發佈<br><br><span style="color:var(--accent-cool)">對象：公眾讀者</span><br><span style="color:var(--accent-cool);font-weight:600">一句話：保存意義。</span></div>
+    </div>
+  </div>
+  <p class="quote" style="font-size:clamp(13px,1.1vw,17px);font-style:normal;margin-top:1.6vh">關鍵紀律：<span style="color:var(--accent-warm)">必先做私人版作起點，本人核可之後，先衍生公開版</span> — 唔可以由公開版反向推出私人版。Shadow 嘅語氣、決策參考，屬於私人版層次；對外稿件必先寫初稿，經自動清理之後，先合公開版紀律。</p>
+</section>
+
+<!-- 10: 語氣校準 -->
+<section class="slide">
+  <span class="slide-num"></span>
+  <h2 class="slide-title">語氣校準：按場合分嘅語氣樣本</h2>
+  <p class="slide-subtitle">同一個人，唔同場合，語氣可以完全唔同。單一風格模板，必失真</p>
+  <div class="grid-2" style="margin-top:1.6vh">
+    <div class="card">
+      <div class="card-icon">🎚️</div>
+      <div class="card-title">語氣場合分類</div>
+      <div class="card-body">反思、短句、教學、商業、自嘲、價值聲明、結構分析、中英混用、emoji 表達、hashtag 多、純英文、純粵語 — 多個場合分類並列。<br><br>可以多個場合疊加，譬如「反思 + 自嘲 + 中英混用」屬於混合場合語氣。</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">⚓</div>
+      <div class="card-title">每個場合有樣本參考</div>
+      <div class="card-body">樣本庫為每個場合保留幾條樣本，加結構模式 — 句式、缺省嘅地方、收尾風格、場合轉換、hashtag 取捨。<br><br>合成之前先判場合，再套對應樣本嘅原則；如該場合尚無樣本，必明文標記首條樣本，不可跨場合借用原則。</div>
+    </div>
+  </div>
+  <p class="quote" style="font-size:clamp(13px,1.1vw,17px);font-style:normal;margin-top:1.6vh">關鍵之處：樣本庫唔淨係查字詞層；同時查結構模式 — 句式、缺省嘅地方、收尾風格。原來語氣嘅真實感，唔喺單字，而係結構。</p>
+</section>
+
+<!-- 11: 決策模擬 -->
+<section class="slide">
+  <span class="slide-num"></span>
+  <h2 class="slide-title">決策模擬：本質思考 × 真實決策手冊</h2>
+  <p class="slide-subtitle">不靠模板，靠本質問題；再加由真實決策提煉出來嘅規律</p>
+  <div class="grid-2" style="margin-top:1.6vh">
+    <div class="card" style="background:linear-gradient(135deg,rgba(54,69,79,.1),transparent)">
+      <div class="card-icon">🧭</div>
+      <div class="card-title">本質思考四問</div>
+      <div class="card-body" style="line-height:2.1">
+        ① 我而家處理嘅，係表面現象，定真正問題？<br>
+        ② 涉及邊啲人、工具、合作方、時間同利益關係？<br>
+        ③ 若果不處理，呢個結構會點演化？<br>
+        ④ 真正可以改變結果嘅槓桿點，喺邊度？
+      </div>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg,rgba(112,128,144,.1),transparent)">
+      <div class="card-icon">📖</div>
+      <div class="card-title">真實決策手冊</div>
+      <div class="card-body">由真實嘅合作、產品決策、風險判斷、AI 工具揀擇、業餘項目取捨提煉出來嘅規律。<br><br>輸入新情境，系統會對映返相似規律，標出建議，並連返對應嘅歷史決策證據。</div>
+    </div>
+  </div>
+</section>
+
+<!-- 12: 核心硬規則 -->
+<section class="slide">
+  <span class="slide-num"></span>
+  <h2 class="slide-title">核心硬規則（讀者最值得借鏡）</h2>
+  <p class="slide-subtitle">Shadow 並非愈強愈好；不過呢幾條，原來係令佢可信嘅根本</p>
+  <div class="grid-3" style="margin-top:1.6vh">
+    <div class="rule-card">
+      <span class="rule-num">1</span>
+      <div class="rule-title">每條特質都要有證據</div>
+      <div class="rule-body">人格特質必須連繫足夠原文作證據；證據不足，即標可信度低；憑印象生成屬於硬禁。<br><br>未夠證據，寧願留空，不填漂亮答案。</div>
+    </div>
+    <div class="rule-card">
+      <span class="rule-num">2</span>
+      <div class="rule-title">逐版小幅修補</div>
+      <div class="rule-body">不可跳年份解讀，必依時序順序累積；每升一版，特質改動數量設上限；要改既有維度嘅核心定義，屬於會打破結構嘅改動，一律擋。<br><br>結構應該隨樣本累積擴展，不可固化早年低樣本嘅結構。</div>
+    </div>
+    <div class="rule-card">
+      <span class="rule-num">3</span>
+      <div class="rule-title">分身不擴權</div>
+      <div class="rule-body">Shadow 不可以因為「我係本人」，就繞過治理規則、改其他資料庫、讀私人訊息、自決衝突。<br><br>本人嘅 Bio 永遠係真實基線；Shadow 只係延伸體，並不是本人本身。</div>
+    </div>
+  </div>
+</section>
+
+<!-- 13: 逐步入門 -->
+<section class="slide">
+  <span class="slide-num"></span>
+  <h2 class="slide-title">如何為自己建立一個 Shadow（逐步入門）</h2>
+  <p class="slide-subtitle">凡有意用 AI 做自己延伸體嘅人，都可以照呢個流程走</p>
+  <div class="step-list">
+    <div class="step-row">
+      <div class="step-num">01</div>
+      <div class="step-content">
+        <div class="step-title">先寫一份自己嘅 Bio（作真實基線）</div>
+        <div class="step-desc">生平、項目、合作方、年份、引言 — 必親自審閱過，凍結為起點；未明確授權之前，不可改。呢份 Bio 既係 Shadow 嘅起點，亦係日後出現爭議時嘅依據。</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">02</div>
+      <div class="step-content">
+        <div class="step-title">收集多源真實言論作存檔</div>
+        <div class="step-desc">公開平台（Facebook、Blog、Medium）、私人通訊（WhatsApp、Email — 分私隱層處理）、公司／項目文件（PDF、報告、履歷）、視覺存檔、公開媒體報導，加平台歷年版本。所有原文必逐字保留為文字檔或結構化資料列，分年分月分批，不作摘要。私人來源永遠只留本機；第三方姓名、金額、電話必先遮蔽，先可以進入下一層。</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">03</div>
+      <div class="step-content">
+        <div class="step-title">建立結構化知識庫</div>
+        <div class="step-desc">言論索引、生平時序、人格特質、語氣樣本庫、決策手冊 — 幾個結構化資料庫。Notion、Airtable、SQL 都可以；揀一個自己查得快嘅就行。</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">04</div>
+      <div class="step-content">
+        <div class="step-title">按年累積，逐版改良</div>
+        <div class="step-desc">由最早一年開始順序累積；每完成一年，結構暫定，不可固化。到樣本最豐厚嗰一年，先再次重新審視；每條特質必有原文證據。</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">05</div>
+      <div class="step-content">
+        <div class="step-title">建立校準循環</div>
+        <div class="step-desc">每一次 AI 用 Shadow 語氣出錯，必寫一條修正紀錄，並累積入樣本庫對應嘅場合。隨 AI 同本人互動嘅時間越長，準度自然就提升。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 14: 幾時用 / 不用 -->
+<section class="slide">
+  <span class="slide-num"></span>
+  <h2 class="slide-title">幾時用 Shadow，幾時不用</h2>
+  <p class="slide-subtitle">Shadow 並非萬能；清楚邊界，先用得長遠</p>
+  <div class="grid-2" style="margin-top:1.6vh">
+    <div class="good-card">
+      <div class="good-title">✅ 適合用 Shadow</div>
+      <div class="good-body" style="line-height:2.1">
+        ・以本人語氣起稿 LinkedIn 帖文、email、演講者簡介<br>
+        ・新合作、產品、風險評估 — 對映返歷史決策規律<br>
+        ・追溯本人幾時開始覺得某件事，搵演化線索<br>
+        ・寫文時自己唔肯定似唔似本人語氣，畀 Shadow 校
+      </div>
+    </div>
+    <div class="warning-card">
+      <div class="warning-title">❌ 唔適合用 Shadow</div>
+      <div class="warning-body" style="line-height:2.1">
+        ・代本人做有法律或財務後果嘅決定<br>
+        ・代本人答未經本人同意嘅私人敏感問題<br>
+        ・人格版本未足夠（只有 Bio，仍未解讀任何一年原文）<br>
+        ・本人自己可以快速回應嘅事
+      </div>
+    </div>
+  </div>
+  <p class="quote" style="margin-top:3vh;text-align:center;border:none;padding:0">Shadow 係延伸，並不是替代；明白呢點，先用得長遠。</p>
+</section>
+
+<!-- 15: 連繫本人 ending -->
+<section class="slide">
+  <span class="slide-num"></span>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2.4vh">
+    <div style="font-size:11px;color:var(--text-secondary);letter-spacing:4px;opacity:.8">END · 最後一頁</div>
+
+    <h2 style="font-size:clamp(28px,3.4vw,52px);font-weight:600;background:var(--mirror);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.2;margin:0">想睇真實 voice？</h2>
+
+    <p style="font-size:clamp(14px,1.35vw,20px);color:var(--text-secondary);max-width:62%;line-height:1.75;margin:0">呢套 Shadow 嘅一切，由本人多年喺 Facebook 累積嘅原文出發。<br>想睇未經 AI 合成嘅 raw voice，歡迎連去本人嘅平台。</p>
+
+    <!-- Mirror → Facebook visual -->
+    <svg width="280" height="100" viewBox="0 0 280 100" xmlns="http://www.w3.org/2000/svg" style="margin:0.8vh 0">
+      <!-- mirror emoji as text (use unicode glyph rendered by browser font) -->
+      <text x="40" y="65" font-size="56" text-anchor="middle">🪞</text>
+      <!-- connection arrow -->
+      <line x1="78" y1="50" x2="190" y2="50" stroke="#708090" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrowEnd)"/>
+      <defs>
+        <marker id="arrowEnd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#708090"/>
+        </marker>
+      </defs>
+      <!-- facebook badge: charcoal circle + white f -->
+      <circle cx="232" cy="50" r="36" fill="#36454f"/>
+      <text x="232" y="74" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="56" font-weight="900" fill="#ffffff" text-anchor="middle">f</text>
+    </svg>
+
+    <!-- CTA button -->
+    <a href="https://www.facebook.com/chan.adam" target="_blank" rel="noopener noreferrer"
+       style="display:inline-flex;align-items:center;gap:14px;padding:16px 36px;background:var(--accent);color:#ffffff;text-decoration:none;border-radius:50px;font-size:clamp(14px,1.2vw,17px);font-weight:600;letter-spacing:0.5px;transition:transform .2s ease,box-shadow .2s ease;box-shadow:0 4px 18px rgba(54,69,79,.18)"
+       onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 10px 26px rgba(54,69,79,.28)'"
+       onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 18px rgba(54,69,79,.18)'">
+      <span>facebook.com/chan.adam</span>
+      <span style="font-size:18px;opacity:.85">↗</span>
+    </a>
+
+    <p style="font-size:clamp(13px,1.1vw,16px);color:var(--accent-warm);font-style:italic;margin-top:1.6vh;max-width:52%;line-height:1.65;border:none">Shadow 係延伸；本人嘅原話，永遠喺真實平台。</p>
+    <p style="font-size:11px;color:var(--text-secondary);letter-spacing:2px;opacity:.65;margin-top:-0.6vh">Adam Chan · 教育科技 / AI 實踐</p>
+  </div>
+</section>
+
+</div>
+
+<div class="nav">
+  <button class="nav-btn" onclick="prev()" aria-label="prev">←</button>
+  <div class="dots" id="dots"></div>
+  <button class="nav-btn" onclick="next()" aria-label="next">→</button>
+</div>
+<div class="kbd-hint">← / → 鍵切換</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const dotsEl = document.getElementById('dots');
+let current = 0;
+slides.forEach((s, i) => {
+  const numEl = s.querySelector('.slide-num');
+  if (numEl) numEl.textContent = String(i+1).padStart(2,'0') + ' / ' + String(slides.length).padStart(2,'0');
+});
+slides.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===0 ? ' active' : '');
+  d.onclick = () => go(i);
+  dotsEl.appendChild(d);
+});
+const dots = document.querySelectorAll('.dot');
+function go(i) {
+  if (i < 0 || i >= slides.length) return;
+  slides[current].classList.remove('active');
+  dots[current].classList.remove('active');
+  current = i;
+  slides[current].classList.add('active');
+  dots[current].classList.add('active');
+}
+function next() { go(Math.min(current + 1, slides.length - 1)); }
+function prev() { go(Math.max(current - 1, 0)); }
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); next(); }
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+  if (e.key === 'Home') go(0);
+  if (e.key === 'End') go(slides.length - 1);
+});
+</script>
+</body>
+</html>
